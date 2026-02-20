@@ -15,6 +15,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          webllm: ['@mlc-ai/web-llm'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {

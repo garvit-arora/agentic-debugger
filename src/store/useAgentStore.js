@@ -42,6 +42,7 @@ export const useAgentStore = create((set, get) => ({
   // Lists
   fixes: [],
   timeline: [],
+  logs: [],
 
   // UI State
   ui: {
@@ -81,6 +82,7 @@ export const useAgentStore = create((set, get) => ({
       score: { base: 100, speedBonus: 0, commitPenalty: 0, total: 100 },
       fixes: [],
       timeline: [],
+      logs: [{ message: 'Initializing healing pipeline…', timestamp: new Date().toISOString(), level: 'info' }],
       ui: { view: 'run', selectedIteration: null, errorMessage: null, isDrawerOpen: false }
     })
   },
@@ -104,6 +106,11 @@ export const useAgentStore = create((set, get) => ({
 
       if (type === 'log') {
         newState.run.lastLog = data.message
+        newState.logs = [...newState.logs, {
+          message: data.message,
+          timestamp: data.timestamp || new Date().toISOString(),
+          level: data.level || 'info',
+        }]
       }
 
       if (type === 'timeline_update') {

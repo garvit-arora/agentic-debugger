@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { useAgentStore } from '../store/useAgentStore'
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
 export function useWebSocketClient(runId, mode) {
   const updateFromStream = useAgentStore((state) => state.updateFromStream)
   const isRunning = useAgentStore((state) => state.run.isRunning)
   const intervalRef = useRef(null)
   const seenFixesRef = useRef(new Set())
   const seenTimelineRef = useRef(new Set())
+  const lastStepRef = useRef(null)
 
   useEffect(() => {
     // Only poll if we have a real runId and the engine is marked as running
@@ -17,19 +20,25 @@ export function useWebSocketClient(runId, mode) {
 
     console.log(`[PythonBackendPolling] Starting real-time sync for run ${runId}...`)
 
+    // Reset dedup state for new run
+    lastStepRef.current = null
+    seenFixesRef.current = new Set()
+    seenTimelineRef.current = new Set()
+
     // Initial status update
     updateFromStream({ type: 'status_change', data: { status: 'streaming' } })
 
     const poll = async () => {
       try {
-        const response = await fetch(`/api/status/${runId}`)
+        const response = await fetch(`${API_BASE}/api/status/${runId}`)
         if (response.status === 404) return;
         if (!response.ok) return;
 
         const data = await response.json()
 
-        // 1. Update Logs / Current Step
-        if (data.current_step) {
+        // 1. Update Logs / Current Step (only when step changes)
+        if (data.current_step && data.current_step !== lastStepRef.current) {
+          lastStepRef.current = data.current_step
           updateFromStream({
             type: 'log',
             data: {
@@ -90,7 +99,7 @@ export function useWebSocketClient(runId, mode) {
         // 5. Check for Final Completion
         if (data.status === 'PASSED' || data.status === 'FAILED' || data.status === 'ERROR') {
           // Fetch final detailed result for comprehensive scoring
-          const resResponse = await fetch(`/api/results/${runId}`)
+          const resResponse = await fetch(`${API_BASE}/api/results/${runId}`)
           if (resResponse.ok) {
             const fullResult = await resResponse.json()
             updateFromStream({
